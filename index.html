@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Location Tracker</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
+        button { padding: 10px 20px; margin: 10px; }
+        #locationDisplay { margin-top: 20px; font-size: 18px; }
+    </style>
+</head>
+<body>
+    <h1>Location Tracker</h1>
+    <p>This site requests permission to access your location for tracking purposes. You can stop at any time.</p>
+    <button id="startBtn">Start Tracking</button>
+    <button id="stopBtn" disabled>Stop Tracking</button>
+    <div id="locationDisplay">Location: Not started</div>
+
+    <script>
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const locationDisplay = document.getElementById('locationDisplay');
+        let watchId = null;
+
+        // Check if Geolocation is supported
+        if (!navigator.geolocation) {
+            locationDisplay.textContent = 'Geolocation is not supported by this browser.';
+        }
+
+        startBtn.addEventListener('click', () => {
+            if (navigator.geolocation) {
+                // Request permission and start watching position
+                watchId = navigator.geolocation.watchPosition(
+                    (position) => {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        locationDisplay.textContent = `Latitude: ${lat}, Longitude: ${lon}`;
+                    },
+                    (error) => {
+                        switch (error.code) {
+                            case error.PERMISSION_DENIED:
+                                locationDisplay.textContent = 'Location access denied by user.';
+                                break;
+                            case error.POSITION_UNAVAILABLE:
+                                locationDisplay.textContent = 'Location information is unavailable.';
+                                break;
+                            case error.TIMEOUT:
+                                locationDisplay.textContent = 'Location request timed out.';
+                                break;
+                            default:
+                                locationDisplay.textContent = 'An unknown error occurred.';
+                                break;
+                        }
+                    },
+                    {
+                        enableHighAccuracy: true,  // Use GPS for better accuracy
+                        timeout: 10000,            // 10 seconds timeout
+                        maximumAge: 0             // Don't use cached position
+                    }
+                );
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            if (watchId !== null) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+                locationDisplay.textContent = 'Tracking stopped.';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }
+        });
+    </script>
+</body>
+</html>
